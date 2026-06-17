@@ -132,6 +132,10 @@ public struct MicLockPolicyState: Equatable {
 
 public final class MicLockController: @unchecked Sendable {
     public typealias ResultHandler = (EnforcementReason, EnforcementResult) -> Void
+    private static let enforcementDebounceMilliseconds = 75
+    private static let readbackTimeoutMilliseconds = 250
+    private static let readbackPollInterval: TimeInterval = 0.025
+
 
     private let deviceClient: AudioDeviceManaging
     private var settings: MicLockSettingsStore
@@ -265,7 +269,7 @@ public final class MicLockController: @unchecked Sendable {
                 self.resultHandler?(reason, result)
             }
             self.pendingDebounceWorkItem = workItem
-            self.queue.asyncAfter(deadline: .now() + .milliseconds(250), execute: workItem)
+            self.queue.asyncAfter(deadline: .now() + .milliseconds(Self.enforcementDebounceMilliseconds), execute: workItem)
         }
     }
 
@@ -295,8 +299,7 @@ public final class MicLockController: @unchecked Sendable {
 
         do {
             try deviceClient.setDefaultInputDevice(uid: target.uid)
-            Thread.sleep(forTimeInterval: 0.25)
-            let currentDefault = try deviceClient.currentDefaultInputDevice()
+            let currentDefault = try confirmedDefaultInputAfterSetting(target: target)
             if currentDefault.uid == target.uid {
                 return .locked(currentDefault)
             }
@@ -306,6 +309,17 @@ public final class MicLockController: @unchecked Sendable {
         } catch {
             return .failed(String(describing: error))
         }
+    }
+
+    private func confirmedDefaultInputAfterSetting(target: AudioDeviceSnapshot) throws -> AudioDeviceSnapshot {
+        let deadline = DispatchTime.now().uptimeNanoseconds
+            + UInt64(Self.readbackTimeoutMilliseconds) * 1_000_000
+        var currentDefault = try deviceClient.currentDefaultInputDevice()
+        while currentDefault.uid != target.uid, DispatchTime.now().uptimeNanoseconds < deadline {
+            Thread.sleep(forTimeInterval: Self.readbackPollInterval)
+            currentDefault = try deviceClient.currentDefaultInputDevice()
+        }
+        return currentDefault
     }
 
     private func resolveTargetDevice(state: MicLockPolicyState) throws -> AudioDeviceSnapshot {
