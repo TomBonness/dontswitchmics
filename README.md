@@ -2,16 +2,16 @@
 
 # Don't Switch Mics
 
-**A tiny macOS menu bar app that keeps your chosen USB/DJI microphone selected.**
+**A tiny macOS menu bar app that keeps your chosen microphone selected.**
 
 [![Swift](https://img.shields.io/badge/Swift-6-orange.svg)](https://swift.org)
 [![macOS](https://img.shields.io/badge/macOS-13%2B-blue.svg)](https://www.apple.com/macos/)
 [![CoreAudio](https://img.shields.io/badge/CoreAudio-HAL-lightgrey.svg)](https://developer.apple.com/documentation/coreaudio)
 [![Privacy](https://img.shields.io/badge/audio-not%20recorded-brightgreen.svg)](#privacy)
 
-AirPods connected? Zoom got clever? macOS switched inputs again?
+Bluetooth headset connected? Conferencing app got clever? macOS switched inputs again?
 
-**Don't Switch Mics puts your real mic back.**
+**Don't Switch Mics puts your selected mic back.**
 
 </div>
 
@@ -19,19 +19,25 @@ AirPods connected? Zoom got clever? macOS switched inputs again?
 
 ## What it does
 
-Don't Switch Mics watches the system default input device. When macOS moves the default input away from your saved microphone, it restores the saved device automatically.
+Don't Switch Mics watches the system default input device. When macOS moves the default input away from the microphone you picked, it restores that saved device automatically.
 
-Built for the common desk setup:
+The rule is simple:
 
-- A USB receiver like `DJI MIC MINI`
-- AirPods that keep stealing input
-- A built-in Mac microphone that should stay out of the way
-- A menu bar app you can forget about once configured
+> The mic you choose is the right mic.
+
+Built for any setup where macOS keeps guessing wrong:
+
+- USB microphones
+- Audio interfaces
+- Wireless receivers
+- Built-in mics you only want sometimes
+- Bluetooth headsets that should not steal input
 
 ## Highlights
 
+- **User-selected first** — once you choose a mic, the app only restores that saved device.
 - **Locks by CoreAudio UID** — not by transient device ID.
-- **Auto-picks DJI over AirPods/Built-in** on first launch when unambiguous.
+- **Safe first launch** — auto-selects only when there is one obvious eligible mic; otherwise it asks you to choose.
 - **No fallback after selection** — if your saved mic is unplugged, it waits for that mic instead of choosing the wrong one.
 - **Fast restore path** — short listener debounce plus immediate readback polling after a restore.
 - **Menu bar only** — no Dock icon.
@@ -72,10 +78,22 @@ Click the mic icon in the menu bar.
 
 ## Verify from the CLI
 
+List available inputs:
+
 ```sh
 make list
-swift run dontswitchmicsctl --select-device-name "DJI MIC MINI"
-swift run dontswitchmicsctl --set-default-input-name "MacBook Air Microphone"
+```
+
+Select the mic you want to keep active:
+
+```sh
+swift run dontswitchmicsctl --select-device-name "Your Microphone Name"
+```
+
+Simulate macOS switching away, then restore it:
+
+```sh
+swift run dontswitchmicsctl --set-default-input-name "Another Input Name"
 swift run dontswitchmicsctl --current-default-input
 swift run dontswitchmicsctl --enforce-once
 swift run dontswitchmicsctl --current-default-input
@@ -83,9 +101,9 @@ swift run dontswitchmicsctl --current-default-input
 
 Expected result:
 
-1. The default input moves to `MacBook Air Microphone`.
-2. `--enforce-once` restores `DJI MIC MINI`.
-3. The final default input is `DJI MIC MINI`.
+1. The default input moves to the other input.
+2. `--enforce-once` restores your saved microphone.
+3. The final default input is your saved microphone.
 
 ## Change the locked mic
 
@@ -107,7 +125,7 @@ If macOS still lists the app, remove it from:
 
 ## Troubleshooting
 
-### `DJI MIC MINI` is not connected
+### My preferred mic is not connected
 
 Run:
 
@@ -115,9 +133,9 @@ Run:
 swift run dontswitchmicsctl --list-devices
 ```
 
-If `DJI MIC MINI` is missing, connect the receiver over USB and click `Refresh Devices` in the menu.
+If the mic is missing, reconnect it and click `Refresh Devices` in the menu.
 
-Once a preferred UID is saved, Don't Switch Mics will **not** fall back to AirPods or the built-in microphone. It waits for the saved mic to return.
+Once a preferred UID is saved, Don't Switch Mics will **not** fall back to another input. It waits for the saved mic to return.
 
 ### The menu says `Choose a microphone`
 

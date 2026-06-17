@@ -3,24 +3,12 @@ import Foundation
 
 public enum DeviceAutoSelector {
     public static func selectPreferredDevice(from devices: [AudioDeviceSnapshot]) -> AudioDeviceSnapshot? {
-        let eligibleDevices = devices.filter { $0.inputChannelCount > 0 && $0.canBeDefaultInput }
-        let djiUSBDevices = sorted(eligibleDevices.filter { isUSB($0) && containsDJI($0) })
-        if let selected = djiUSBDevices.first {
-            return selected
+        let eligibleDevices = sorted(devices.filter { $0.inputChannelCount > 0 && $0.canBeDefaultInput })
+        let usbDevices = eligibleDevices.filter(isUSB)
+        if usbDevices.count == 1 {
+            return usbDevices[0]
         }
-
-        let djiDevices = sorted(eligibleDevices.filter(containsDJI))
-        if let selected = djiDevices.first {
-            return selected
-        }
-
-        let usbDevices = sorted(eligibleDevices.filter(isUSB))
-        return usbDevices.count == 1 ? usbDevices[0] : nil
-    }
-
-    public static func containsDJI(_ device: AudioDeviceSnapshot) -> Bool {
-        device.name.localizedCaseInsensitiveContains("DJI")
-            || device.manufacturer.localizedCaseInsensitiveContains("DJI")
+        return eligibleDevices.count == 1 ? eligibleDevices[0] : nil
     }
 
     public static func isUSB(_ device: AudioDeviceSnapshot) -> Bool {

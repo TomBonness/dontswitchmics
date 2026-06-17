@@ -6,40 +6,38 @@ import Testing
 @Suite
 struct DeviceAutoSelectorTests {
     @Test
-    func djiUSBBeatsAirPodsBuiltInAndGenericUSB() {
+    func singleUSBInputIsSelectedWhenOtherInputsExist() {
         let selected = DeviceAutoSelector.selectPreferredDevice(from: [
-            device(name: "AirPods Pro", uid: "airpods", manufacturer: "Apple", transportType: kAudioDeviceTransportTypeBluetooth),
+            device(name: "Bluetooth Headset", uid: "bluetooth", manufacturer: "Example", transportType: kAudioDeviceTransportTypeBluetooth),
             device(name: "MacBook Air Microphone", uid: "built-in", manufacturer: "Apple", transportType: kAudioDeviceTransportTypeBuiltIn),
-            device(name: "USB Audio Device", uid: "generic-usb", manufacturer: "Generic", transportType: kAudioDeviceTransportTypeUSB),
-            device(name: "DJI MIC MINI", uid: "dji-usb", manufacturer: "DJI Technology Co., Ltd.", transportType: kAudioDeviceTransportTypeUSB)
+            device(name: "Studio USB Mic", uid: "studio-usb", manufacturer: "Example Audio", transportType: kAudioDeviceTransportTypeUSB)
         ])
 
-        #expect(selected?.uid == "dji-usb")
+        #expect(selected?.uid == "studio-usb")
     }
 
     @Test
-    func anyDJIInputBeatsNonDJIUSBWhenNoDJIUSBExists() {
+    func brandNameDoesNotOverrideGenericUSBPreference() {
         let selected = DeviceAutoSelector.selectPreferredDevice(from: [
-            device(name: "USB Audio Device", uid: "generic-usb", manufacturer: "Generic", transportType: kAudioDeviceTransportTypeUSB),
-            device(name: "Wireless DJI Mic", uid: "dji-bluetooth", manufacturer: "DJI Technology Co., Ltd.", transportType: kAudioDeviceTransportTypeBluetooth)
+            device(name: "Studio USB Mic", uid: "studio-usb", manufacturer: "Example Audio", transportType: kAudioDeviceTransportTypeUSB),
+            device(name: "Wireless Lavalier", uid: "wireless-lav", manufacturer: "Popular Mic Co.", transportType: kAudioDeviceTransportTypeBluetooth)
         ])
 
-        #expect(selected?.uid == "dji-bluetooth")
+        #expect(selected?.uid == "studio-usb")
     }
 
     @Test
-    func singleGenericUSBInputIsSelectedWhenNoDJIDeviceExists() {
+    func singleEligibleInputIsSelectedWhenNoUSBDeviceExists() {
         let selected = DeviceAutoSelector.selectPreferredDevice(from: [
-            device(name: "AirPods Pro", uid: "airpods", manufacturer: "Apple", transportType: kAudioDeviceTransportTypeBluetooth),
-            device(name: "MacBook Air Microphone", uid: "built-in", manufacturer: "Apple", transportType: kAudioDeviceTransportTypeBuiltIn),
-            device(name: "USB Audio Device", uid: "generic-usb", manufacturer: "Generic", transportType: kAudioDeviceTransportTypeUSB)
+            device(name: "Display Audio", uid: "display", manufacturer: "Display", transportType: kAudioDeviceTransportTypeDisplayPort, inputChannelCount: 0, canBeDefaultInput: false),
+            device(name: "Bluetooth Lavalier", uid: "bluetooth-lav", manufacturer: "Example", transportType: kAudioDeviceTransportTypeBluetooth)
         ])
 
-        #expect(selected?.uid == "generic-usb")
+        #expect(selected?.uid == "bluetooth-lav")
     }
 
     @Test
-    func multipleNonDJIUSBInputsProduceNeedsSelection() {
+    func multipleUSBInputsProduceNeedsSelection() {
         let devices = [
             device(name: "USB Audio A", uid: "generic-a", manufacturer: "Generic", transportType: kAudioDeviceTransportTypeUSB),
             device(name: "USB Audio B", uid: "generic-b", manufacturer: "Generic", transportType: kAudioDeviceTransportTypeUSB)
@@ -59,12 +57,12 @@ struct DeviceAutoSelectorTests {
     @Test
     func savedUIDMissingNeverFallsBackToAnotherDevice() {
         let settings = testSettings()
-        settings.preferredInputDeviceUID = "missing-dji"
-        settings.preferredInputDeviceName = "DJI MIC MINI"
+        settings.preferredInputDeviceUID = "missing-studio-mic"
+        settings.preferredInputDeviceName = "Studio Mic"
         let client = RecordingAudioDeviceClient(devices: [
             device(name: "USB Audio Device", uid: "generic-usb", manufacturer: "Generic", transportType: kAudioDeviceTransportTypeUSB)
         ])
-        client.missingUIDs.insert("missing-dji")
+        client.missingUIDs.insert("missing-studio-mic")
 
         let controller = MicLockController(
             deviceClient: client,
@@ -72,19 +70,19 @@ struct DeviceAutoSelectorTests {
             queue: DispatchQueue(label: "DeviceAutoSelectorTests.missingSavedUID")
         )
 
-        #expect(controller.enforce(reason: .cli) == .targetMissing(savedName: "DJI MIC MINI"))
-        #expect(client.deviceLookupUIDs == ["missing-dji"])
+        #expect(controller.enforce(reason: .cli) == .targetMissing(savedName: "Studio Mic"))
+        #expect(client.deviceLookupUIDs == ["missing-studio-mic"])
         #expect(client.devicesCallCount == 0)
         #expect(client.setDefaultInputUIDs == [])
-        #expect(settings.preferredInputDeviceUID == "missing-dji")
+        #expect(settings.preferredInputDeviceUID == "missing-studio-mic")
     }
 
     @Test
     func disabledLockReturnsDisabledWithoutCoreAudioPolicyWork() {
         let state = MicLockPolicyState(
             lockEnabled: false,
-            preferredInputDeviceUID: "dji-usb",
-            preferredInputDeviceName: "DJI MIC MINI"
+            preferredInputDeviceUID: "studio-usb",
+            preferredInputDeviceName: "Studio USB Mic"
         )
 
         #expect(state.disabledResult == .disabled)
