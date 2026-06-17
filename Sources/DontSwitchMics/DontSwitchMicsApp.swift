@@ -44,13 +44,8 @@ private struct MenuBarContent: View {
                 Text("No eligible input devices")
             } else {
                 ForEach(model.devices) { device in
-                    Button {
+                    Button(deviceMenuTitle(for: device)) {
                         model.selectDevice(device)
-                    } label: {
-                        HStack {
-                            Text(device.uid == model.selectedUID ? "✓" : "  ")
-                            Text("\(device.name) — \(transportLabel(for: device.transportType))")
-                        }
                     }
                 }
             }
@@ -90,5 +85,10 @@ private struct MenuBarContent: View {
             return "Locked to: \(selectedDeviceName)"
         }
         return "Choose a microphone"
+    }
+
+    private func deviceMenuTitle(for device: AudioDeviceSnapshot) -> String {
+        let marker = device.uid == model.selectedUID ? "✓ " : ""
+        return "\(marker)\(device.name) — \(transportLabel(for: device.transportType))"
     }
 }
